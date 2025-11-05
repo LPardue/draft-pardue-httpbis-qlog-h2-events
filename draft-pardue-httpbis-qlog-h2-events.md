@@ -1,7 +1,6 @@
 ---
-title: "TODO - Your title"
-abbrev: "TODO - Abbreviation"
-category: info
+title: HTTP/2 qlog event definitions
+category: std
 
 docname: draft-pardue-httpbis-qlog-h2-events-latest
 submissiontype: IETF  # also: "independent", "editorial", "IAB", or "IRTF"
@@ -12,9 +11,9 @@ v: 3
 area: "Web and Internet Transport"
 workgroup: "HTTP"
 keyword:
- - next generation
- - unicorn
- - sparkling distributed ledger
+ - obsolete
+ - and
+ - sucks
 venue:
   group: "HTTP"
   type: "Working Group"
