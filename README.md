@@ -1,8 +1,8 @@
-<!-- regenerate: on (set to off if you edit this file) -->
+<!-- regenerate: off (set to off if you edit this file) -->
 
-# TODO - Your title
+# HTTP/2 qlog event definitions
 
-This is the working area for the individual Internet-Draft, "TODO - Your title".
+This is the working area for the individual Internet-Draft, "HTTP/2 qlog event definitions".
 
 * [Editor's Copy](https://LPardue.github.io/draft-pardue-httpbis-qlog-h2-events/#go.draft-pardue-httpbis-qlog-h2-events.html)
 * [Datatracker Page](https://datatracker.ietf.org/doc/draft-pardue-httpbis-qlog-h2-events)
