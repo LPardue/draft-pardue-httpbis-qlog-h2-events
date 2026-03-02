@@ -1420,7 +1420,7 @@ HTTP2ParametersSet = {
     ? max_concurrent_streams: uint32
     ? initial_window_size: uint32
     ? max_frame_size: uint32
-    ? max_header_list_size: uin32
+    ? max_header_list_size: uint32
 
     ? extended_connect: uint32
     ? no_rfc7540_priorities: uint32
@@ -1459,7 +1459,7 @@ HTTP2ParametersRestored = {
     ? max_concurrent_streams: uint32
     ? initial_window_size: uint32
     ? max_frame_size: uint32
-    ? max_header_list_size: uin32
+    ? max_header_list_size: uint32
 
     ? extended_connect: uint32
     ? no_rfc7540_priorities: uint32
@@ -1655,7 +1655,7 @@ HTTP2HTTPField = {
 <pre>
 HTTP2HeadersFrame = {
     frame_type: "headers"
-    ? priority: : bool .default false
+    ? priority: bool .default false
     ? padded: bool .default false
     ? end_headers: bool .default false
     ? end_stream: bool .default false
@@ -1753,7 +1753,7 @@ HTTP2PriorityFrame = {
 <figure id="figure-14">
             <div class="lang-cddl sourcecode" id="section-5.2.4-1.1">
 <pre>
-HTTP2DataFrame = {
+HTTP2RstStreamFrame = {
     frame_type: "rst_stream"
 
     error_code: uint32
@@ -1904,8 +1904,8 @@ HTTP2GoawayFrame = {
 <figure id="figure-19">
             <div class="lang-cddl sourcecode" id="section-5.2.9-1.1">
 <pre>
-HTTP2GoawayFrame = {
-    frame_type: "goaway"
+HTTP2WindowUpdateFrame = {
+    frame_type: "window_update"
 
     window_size_increment: uint32
     ? raw: RawInfo
@@ -2032,7 +2032,7 @@ HTTP2OriginFrame = {
 <figure id="figure-24">
             <div class="lang-cddl sourcecode" id="section-5.2.14-2.1">
 <pre>
-HTTPPriorityUpdateFrame = {
+HTTP2PriorityUpdateFrame = {
   frame_type: "priority_update"
 
   prioritized_stream_id: uint32
