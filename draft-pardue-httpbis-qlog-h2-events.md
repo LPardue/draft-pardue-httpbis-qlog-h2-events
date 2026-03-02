@@ -3,7 +3,7 @@ title: HTTP/2 qlog event definitions
 category: std
 
 docname: draft-pardue-httpbis-qlog-h2-events-latest
-submissiontype: IETF  # also: "independent", "editorial", "IAB", or "IRTF"
+submissiontype: IETF
 number:
 date:
 consensus: true
@@ -25,7 +25,6 @@ venue:
 author:
  -
     fullname: "Lucas Pardue"
-    organization: Cloudflare
     email: "lucas@lucaspardue.com"
 
 normative:
@@ -45,7 +44,8 @@ informative:
 
 --- abstract
 
-This document defines qlog event definitions for HTTP/2 protocol.
+This document defines a qlog event schema containing concrete events for the
+core HTTP/2 protocol and selected extensions.
 
 
 --- middle
@@ -53,7 +53,9 @@ This document defines qlog event definitions for HTTP/2 protocol.
 # Introduction
 
 This document defines a qlog event schema ({{Section 8 of QLOG-MAIN}})
-containing concrete events for HTTP/2{{RFC9113}}.
+containing concrete events for the core HTTP/2 protocol {{RFC9113}} and selected
+extensions ({{!ALTSVC=RFC7838}}, {{!ORIGIN=RFC8336}},
+{{!EXTENDED-CONNECT=RFC8441}} and {{!EXTENSIBLE_PRIORITIZATION=RFC9218}}).
 
 The event namespace with identifier `http2` is defined; see {{schema-def}}. In
 this namespace multiple events derive from the qlog abstract Event class
@@ -118,6 +120,17 @@ HTTP/2 events extend the `$ProtocolEventData` extension point defined in
 per-event extension points via the `$$` CDDL "group socket" syntax, as also
 described in {{QLOG-MAIN}}.
 
+~~~ cddl
+HTTP2EventData = HTTP2ParametersSet /
+                 HTTP2ParametersRestored /
+                 HTTP2FrameCreated /
+                 HTTP2FrameParsed
+
+$ProtocolEventData /= HTTP2EventData
+~~~
+{: #events-def title="HTTP2EventData definition and ProtocolEventData
+extension"}
+
 ## parameters_set {#parametersset}
 
 The `parameters_set` event contains HTTP/2 settings, mostly those received from
@@ -127,13 +140,13 @@ Parameters are typically set once but they can be set at different times during
 the connection, therefore a qlog can have multiple instances of `parameters_set`
 with different fields set.
 
-The "owner" field reflects how Settings are exchanged on a connection. Sent
+The "initiator" field reflects how Settings are exchanged on a connection. Sent
 settings have the value "local" and received settings have the value
 "received".
 
 ~~~ cddl
 HTTP2ParametersSet = {
-    ? owner: Owner
+    ? initiator: Initiator
 
     ? header_table_size: uint32
     ? enable_push: uint32
@@ -163,7 +176,7 @@ utilizing 0-RTT. It has Core importance level.
 
 ~~~ cddl
 HTTP2ParametersRestored = {
-    ? owner: Owner
+    ? initiator: Initiator
 
     ? header_table_size: uint32
     ? enable_push: uint32
@@ -188,9 +201,7 @@ It has Core importance level.
 ~~~ cddl
 HTTP2FrameCreated = {
     stream_id: uint32
-    ? length: uint32
     frame: $HTTP2Frame
-    ? raw: RawInfo
 
     * $$http2-framecreated-extension
 }
@@ -204,10 +215,8 @@ importance level.
 
 ~~~ cddl
 HTTP2FrameParsed = {
-    stream_id: uint64
-    ? length: uint64
+    stream_id: uint32
     frame: $HTTP2Frame
-    ? raw: RawInfo
 
     * $$http2-frameparsed-extension
 }
@@ -218,13 +227,13 @@ HTTP2FrameParsed = {
 
 The following data type definitions can be used in HTTP/2 events.
 
-## Owner
+## Initiator
 
 ~~~ cddl
-Owner = "local" /
-        "remote"
+Initiator = "local" /
+            "remote"
 ~~~
-{: #owner-def title="Owner definition"}
+{: #initiator-def title="Initiator definition"}
 
 ## HTTP2Frame
 
@@ -237,7 +246,7 @@ $HTTP2Frame /= {
     * text => any
 }
 ~~~~~~
-{: #h2-frame-def title="HTTP2Frame type socket definition"}
+{: #frame-def title="HTTP2Frame type socket definition"}
 
 The HTTP/2 frame types defined in this document are as follows:
 
@@ -252,18 +261,25 @@ HTTP2BaseFrames = HTTP2DataFrame /
                   HTTP2GoawayFrame /
                   HTTP2WindowUpdateFrame /
                   HTTP2ContinuationFrame /
-                  HTTP2ReservedFrame /
                   HTTP2UnknownFrame
 
-$HTTP2Frame /= HTTP2BaseFrames
+HTTP2ExtensionFrames = HTTP2AltSvcFrame /
+                       HTTP2OriginFrame /
+                       HTTP2PriorityUpdateFrame
+
+$HTTP2Frame /= HTTP2BaseFrames / HTTP2ExtensionFrames
 ~~~
-{: #baseframe-def title="HTTP2BaseFrames definition"}
+{: #frames-def title="HTTP2Frames definition"}
 
 ### HTTP2DataFrame
 
 ~~~ cddl
 HTTP2DataFrame = {
     frame_type: "data"
+
+    ? padded: bool .default false
+    ? end_stream: bool .default false
+
     ? raw: RawInfo
 }
 ~~~
@@ -272,7 +288,7 @@ HTTP2DataFrame = {
 ### HTTP2HeadersFrame
 
 The payload of an HTTP/2 HEADERS frame is the HPACK-encoding of an HTTP field
-section; see {{?RFC7541}}. `HTTP2HeaderFrame`, in contrast, contains the HTTP
+section; see {{?RFC7541}}. `HTTP2HeadersFrame`, in contrast, contains the HTTP
 field section without encoding.
 
 ~~~ cddl
@@ -288,6 +304,11 @@ HTTP2HTTPField = {
 ~~~ cddl
 HTTP2HeadersFrame = {
     frame_type: "headers"
+    ? priority: : bool .default false
+    ? padded: bool .default false
+    ? end_headers: bool .default false
+    ? end_stream: bool .default false
+
     headers: [* HTTP2HTTPField]
     ? raw: RawInfo
 }
@@ -338,6 +359,33 @@ An instance of `HTTP2HTTPField` MUST include either the `name` or `name_bytes`
 field and MAY include both. An `HTTP2HTTPField` MAY include a `value` or
 `value_bytes` field or neither.
 
+### HTTP2PriorityFrame
+
+~~~ cddl
+HTTP2PriorityFrame = {
+    frame_type: "priority"
+
+    exclusive: bool .default false
+    stream_dependency: uint32
+    weight: uint8
+    ? raw: RawInfo
+}
+~~~
+{: #priorityframe-def title="HTTP2PriorityFrame definition"}
+
+### HTTP2RstStreamFrame
+
+~~~ cddl
+HTTP2DataFrame = {
+    frame_type: "rst_stream"
+
+    error_code: uint32
+
+    ? raw: RawInfo
+}
+~~~
+{: #rststreamframe-def title="HTTPRstStreamFrame definition"}
+
 ### HTTP2SettingsFrame
 
 The settings field can contain zero or more entries. Each setting has a name
@@ -352,6 +400,9 @@ Instead, the name value of "unknown" can be used and the value captured in the
 ~~~ cddl
 HTTP2SettingsFrame = {
     frame_type: "settings"
+
+    ? ack: bool .default false
+
     settings: [* HTTP2Setting]
     ? raw: RawInfo
 }
@@ -359,20 +410,20 @@ HTTP2SettingsFrame = {
 HTTP2Setting = {
     ? name: $HTTP2SettingsName
     ; only when name === "unknown"
-    ? name_bytes: uint64
+    ? name_bytes: uint32
 
-    value: uint64
+    value: uint32
 }
 
 $HTTP2SettingsName /= "settings_header_table_size" /
-                   "settings_enable_push" /
-                   "settings_max_concurrent_streams" /
-                   "settings_initial_window_size" /
-                   "settings_max_frame_size" /
-                   "settings_max_header_list_size" /
-                   "settings_extended_connect" /
-                   "settings_no_rfc7540_priorities" /
-                   "unknown"
+                      "settings_enable_push" /
+                      "settings_max_concurrent_streams" /
+                      "settings_initial_window_size" /
+                      "settings_max_frame_size" /
+                      "settings_max_header_list_size" /
+                      "settings_extended_connect" /
+                      "settings_no_rfc7540_priorities" /
+                      "unknown"
 ~~~
 {: #settingsframe-def title="HTTP2SettingsFrame definition"}
 
@@ -381,12 +432,30 @@ $HTTP2SettingsName /= "settings_header_table_size" /
 ~~~ cddl
 HTTP2PushPromiseFrame = {
     frame_type: "push_promise"
-    push_id: uint64
+
+    ? padded: bool .default false
+    ? end_headers: bool .default false
+
+    promised_stream_id: uint32
     headers: [* HTTP2HTTPField]
     ? raw: RawInfo
 }
 ~~~
 {: #pushpromiseframe-def title="HTTP2PushPromiseFrame definition"}
+
+### HTTP2PingFrame
+
+~~~ cddl
+HTTP2PingFrame = {
+    frame_type: "ping"
+
+    ? ack: bool .default false
+
+    opaque_data: hexstring
+    ? raw: RawInfo
+}
+~~~
+{: #pingframe-def title="HTTP2PingFrame definition"}
 
 ### HTTP2GoAwayFrame
 
@@ -394,13 +463,39 @@ HTTP2PushPromiseFrame = {
 HTTP2GoawayFrame = {
     frame_type: "goaway"
 
-    stream_id: uint32
+    last_stream_id: uint32
     error_code: uint32
     ? additional_debug_data: hexstring
     ? raw: RawInfo
 }
 ~~~
 {: #goawayframe-def title="HTTP2GoawayFrame definition"}
+
+### HTTP2WindowUpdateFrame
+
+~~~ cddl
+HTTP2GoawayFrame = {
+    frame_type: "goaway"
+
+    window_size_increment: uint32
+    ? raw: RawInfo
+}
+~~~
+{: #windowupdateframe-def title="HTTP2WindowUpdateFrame definition"}
+
+### HTTP2ContinuationFrame
+
+~~~ cddl
+HTTP2ContinuationFrame = {
+    frame_type: "continuation"
+
+    ? end_headers: bool .default false
+
+    headers: [* HTTP2HTTPField]
+    ? raw: RawInfo
+}
+~~~
+{: #continuationframe-def title="HTTP2ContinuationFrame definition"}
 
 ### HTTP2UnknownFrame
 
@@ -415,6 +510,60 @@ HTTP2UnknownFrame = {
 }
 ~~~
 {: #unknownframe-def title="HTTP2UnknownFrame definition"}
+
+### HTTP2AltSvcFrame
+
+The ALTSVC frame is defined in {{ALTSVC}}.
+
+~~~ cddl
+HTTP2AltSvcFrame = {
+  frame_type: "altsvc"
+
+  origin_len: uint16
+  ? origin: text
+  ? alt-svc-field-value: text
+  ? raw: RawInfo
+}
+~~~
+{: #altsvcframe-def title="HTTP2AltSvcFrame definition"}
+
+### HTTP2OriginFrame
+
+The ORIGIN frame is defined in {{ORIGIN}}.
+
+~~~ cddl
+HTTP2OriginEntry = {
+  origin_len: uint16
+  ? ASCII-Origin: text
+}
+
+HTTP2OriginFrame = {
+  frame_type: "origin"
+
+  origin_entries: [* HTTP2OriginEntry]
+  ? raw: RawInfo
+}
+~~~
+{: #originframe-def title="HTTP2OriginFrame definition"}
+
+### HTTP2PriorityUpdateFrame
+
+The PRIORITY_UPDATE frame is defined in {{EXTENSIBLE_PRIORITIZATION}}.
+
+~~~ cddl
+HTTPPriorityUpdateFrame = {
+  frame_type: "priority_update"
+
+  prioritized_stream_id: uint32
+  priority_field_value: HTTP2Priority
+  ? raw: RawInfo
+}
+
+; The priority value in ASCII text, encoded using Structured Fields
+; Example: u=5, i
+HTTP2Priority = text
+~~~
+{: #priorityupdateframe-def title="HTTP2PriorityUpdateFrame definition"}
 
 # Security Considerations
 
