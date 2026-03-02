@@ -153,7 +153,7 @@ HTTP2ParametersSet = {
     ? max_concurrent_streams: uint32
     ? initial_window_size: uint32
     ? max_frame_size: uint32
-    ? max_header_list_size: uin32
+    ? max_header_list_size: uint32
 
     ? extended_connect: uint32
     ? no_rfc7540_priorities: uint32
@@ -183,7 +183,7 @@ HTTP2ParametersRestored = {
     ? max_concurrent_streams: uint32
     ? initial_window_size: uint32
     ? max_frame_size: uint32
-    ? max_header_list_size: uin32
+    ? max_header_list_size: uint32
 
     ? extended_connect: uint32
     ? no_rfc7540_priorities: uint32
@@ -304,7 +304,7 @@ HTTP2HTTPField = {
 ~~~ cddl
 HTTP2HeadersFrame = {
     frame_type: "headers"
-    ? priority: : bool .default false
+    ? priority: bool .default false
     ? padded: bool .default false
     ? end_headers: bool .default false
     ? end_stream: bool .default false
@@ -376,7 +376,7 @@ HTTP2PriorityFrame = {
 ### HTTP2RstStreamFrame
 
 ~~~ cddl
-HTTP2DataFrame = {
+HTTP2RstStreamFrame = {
     frame_type: "rst_stream"
 
     error_code: uint32
@@ -474,8 +474,8 @@ HTTP2GoawayFrame = {
 ### HTTP2WindowUpdateFrame
 
 ~~~ cddl
-HTTP2GoawayFrame = {
-    frame_type: "goaway"
+HTTP2WindowUpdateFrame = {
+    frame_type: "window_update"
 
     window_size_increment: uint32
     ? raw: RawInfo
@@ -551,7 +551,7 @@ HTTP2OriginFrame = {
 The PRIORITY_UPDATE frame is defined in {{EXTENSIBLE_PRIORITIZATION}}.
 
 ~~~ cddl
-HTTPPriorityUpdateFrame = {
+HTTP2PriorityUpdateFrame = {
   frame_type: "priority_update"
 
   prioritized_stream_id: uint32
