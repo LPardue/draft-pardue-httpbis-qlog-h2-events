@@ -1,0 +1,3 @@
+[submodule "deps/qlog"]
+	path = deps/qlog
+	url = https://github.com/quicwg/qlog

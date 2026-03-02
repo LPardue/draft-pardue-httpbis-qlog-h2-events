@@ -1,0 +1,32 @@
+name: CDDL Validation
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: "Validates CDDL for documents"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby-version: ['3.3.0']
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+          submodules: 'recursive'
+    - name: Apt update
+      run: sudo apt update
+    - name: Install System Dependencies
+      run: sudo apt-get install --yes libyaml-dev openssl
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby-version }}
+        bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+    - name: Install Ruby gems
+      run: gem install cddl
+    - name: validate CDDL (h2 schema)
+      run: ./cddl_validate.sh draft-pardue-httpbis-qlog-h2-events.md
